@@ -1,1 +1,1 @@
-# ScamPageFinder Automation
+# ScamPageFinder Automation v2
