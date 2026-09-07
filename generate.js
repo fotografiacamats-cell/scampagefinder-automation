@@ -127,7 +127,18 @@ async function generate() {
             console.error(`Error con ${domain}:`, e.message);
         }
     }
-    console.log('Proceso terminado. Archivo _redirects generado automáticamente.');
+
+    // Generar sitemap.xml con todos los dominios generados
+    const sitemapUrls = domains.map(d => {
+        return `<url><loc>https://scampagefinder.com/check/${d}</loc><lastmod>${new Date().toISOString().split('T')[0]}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+    }).join('\n');
+
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls}\n</urlset>`;
+
+    fs.writeFileSync(path.join('output', 'sitemap.xml'), sitemap);
+    console.log('✅ Generado sitemap.xml');
+
+    console.log('Proceso terminado. Archivo _redirects y sitemap.xml generados automáticamente.');
 }
 
 generate();
