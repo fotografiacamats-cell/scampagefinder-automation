@@ -5,18 +5,15 @@ const path = require('path');
 // Cambia esta URL si tu API está en otro dominio
 const API_BASE = 'https://scampagefinder-api.fotografiacamats.workers.dev/?domain=';
 
-// Lee la lista de dominios desde domains.txt
-const domains = fs.readFileSync('domains.txt', 'utf8').split('\n').filter(Boolean);
+// Lee la lista de dominios desde domains.txt (Limpia espacios, saltos de línea y retornos de carro de Windows)
+const domains = fs.readFileSync('domains.txt', 'utf8')
+    .split('\n')
+    .map(d => d.trim())
+    .filter(Boolean);
 
-// Función para escapar caracteres HTML en el nombre del dominio
-function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    })[m]);
+// Función para escapar caracteres especiales de XML (evita errores con h&m.com, etc.)
+function escapeXml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
 async function generate() {
@@ -25,7 +22,7 @@ async function generate() {
         fs.mkdirSync('output');
     }
 
-    // [CORRECCIÓN CLAVE] Crear el archivo de redirecciones para que /check/dominio funcione automáticamente
+    // Generar archivo de redirecciones para que /check/dominio funcione automáticamente
     fs.writeFileSync(path.join('output', '_redirects'), '/check/* /:splat 200');
 
     for (const domain of domains) {
@@ -38,7 +35,6 @@ async function generate() {
             }
             const data = await res.json();
 
-            // Generar un HTML profesional y optimizado para SEO
             const score = data.transparency_index.score;
             const status = data.transparency_index.label;
             const spf = data.email_security.spf.detected ? 'Yes' : 'No';
@@ -50,73 +46,16 @@ async function generate() {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${data.domain} Security Report - ScamPageFinder</title>
-<meta name="description" content="Is ${data.domain} safe? Score: ${score}/100. Check DNS, SPF, DMARC, SSL, and security headers in this technical transparency report.">
-<link rel="canonical" href="https://scampagefinder.com/check/${data.domain}">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "ItemReview",
-  "itemReviewed": {
-    "@type": "WebSite",
-    "name": "${data.domain}",
-    "url": "https://${data.domain}"
-  },
-  "reviewRating": {
-    "@type": "Rating",
-    "ratingValue": "${score}",
-    "bestRating": "100",
-    "worstRating": "0"
-  },
-  "author": {
-    "@type": "Organization",
-    "name": "ScamPageFinder",
-    "url": "https://scampagefinder.com"
-  }
-}
-</script>
-<style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; padding: 20px; line-height: 1.6; }
-    .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; }
-    h1 { color: #818cf8; margin-bottom: 20px; }
-    .score { font-size: 48px; font-weight: 800; color: #10b981; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-    .card { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
-    .label { text-transform: uppercase; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
-    .status { font-weight: bold; color: #f59e0b; }
-    .yes { color: #10b981; font-weight: bold; }
-    .no { color: #ef4444; font-weight: bold; }
-    .footer { margin-top: 30px; font-size: 12px; color: #64748b; text-align: center; }
-</style>
+<link rel="canonical" href="https://scampagefinder.com/check/${escapeXml(data.domain)}">
+<style>body{background:#0f172a;color:#fff;font-family:Arial}.container{max-width:800px;margin:auto;padding:30px}.score{font-size:50px;color:#10b981}</style>
 </head>
 <body>
 <div class="container">
-    <h1>${data.domain} Security Report</h1>
-    <p>Technical Transparency Score:</p>
-    <div class="score">${score}/100</div>
-    <p class="status">Status: ${status}</p>
-    
-    <div class="grid">
-        <div class="card">
-            <div class="label">SPF Record</div>
-            <div class="${spf === 'Yes' ? 'yes' : 'no'}">${spf}</div>
-        </div>
-        <div class="card">
-            <div class="label">DMARC Policy</div>
-            <div class="${dmarc === 'Yes' ? 'yes' : 'no'}">${dmarc}</div>
-        </div>
-        <div class="card">
-            <div class="label">HSTS Header</div>
-            <div class="${hsts === 'Yes' ? 'yes' : 'no'}">${hsts}</div>
-        </div>
-        <div class="card">
-            <div class="label">CSP Header</div>
-            <div class="${csp === 'Yes' ? 'yes' : 'no'}">${csp}</div>
-        </div>
-    </div>
-
-    <div class="footer">Report generated by ScamPageFinder.com</div>
+<h1>${data.domain}</h1>
+<p>Score: ${score}/100</p>
+<p>Status: ${status}</p>
+<p>SPF: ${spf}</p><p>DMARC: ${dmarc}</p><p>HSTS: ${hsts}</p><p>CSP: ${csp}</p>
 </div>
 </body>
 </html>`;
@@ -128,16 +67,16 @@ async function generate() {
         }
     }
 
-    // Generar sitemap.xml con todos los dominios generados
+    // Generar sitemap.xml (CORREGIDO para Google)
     const sitemapUrls = domains.map(d => {
-        return `<url><loc>https://scampagefinder.com/check/${d}</loc><lastmod>${new Date().toISOString().split('T')[0]}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+        const cleanDomain = escapeXml(d);
+        return `<url><loc>https://scampagefinder.com/check/${cleanDomain}</loc><lastmod>${new Date().toISOString().split('T')[0]}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
     }).join('\n');
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls}\n</urlset>`;
 
     fs.writeFileSync(path.join('output', 'sitemap.xml'), sitemap);
     console.log('✅ Generado sitemap.xml');
-
     console.log('Proceso terminado. Archivo _redirects y sitemap.xml generados automáticamente.');
 }
 
