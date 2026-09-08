@@ -2,7 +2,7 @@ name: Generate weekly reports
 
 on:
   schedule:
-    - cron: '0 3 * * 1'  # Cada lunes a las 3 AM
+   - cron: '0 3 * * *'  # Cada día a las 3 AM
   workflow_dispatch: {}   # Permite ejecutarlo manualmente
 
 jobs:
