@@ -1,24 +1,26 @@
-name: Generate weekly reports
+name: Generate daily reports
 
 on:
   schedule:
-   - cron: '0 3 * * *'  # Cada día a las 3 AM
-  workflow_dispatch: {}   # Permite ejecutarlo manualmente
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - run: npm install
+          node-version: '20'
       - run: node generate.js
       - name: Commit changes
         run: |
           git config --global user.email "fotografiacamats@gmail.com"
-          git config --global user.name "Adria"
+          git config --global user.name "fotografiacamats-cell"
           git add output/
-          git commit -m "Generated weekly reports"
+          git commit -m "Generated daily reports" || echo "No changes to commit"
           git push
