@@ -68,3 +68,8 @@ whatnot.com
 altxyz.com
 fanaticscollect.com
 goldin.co
+wayfair.com
+overstock.com
+newegg.com
+bhphotovideo.com
+zappos.com
