@@ -73,3 +73,8 @@ overstock.com
 newegg.com
 bhphotovideo.com
 zappos.com
+stockx.com
+goat.com
+poshmark.com
+mercari.com
+depop.com
