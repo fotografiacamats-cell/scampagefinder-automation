@@ -78,3 +78,10 @@ goat.com
 poshmark.com
 mercari.com
 depop.com
+twitch.tv
+spotify.com
+airbnb.com
+booking.com
+udemy.com
+fiverr.com
+roblox.com
