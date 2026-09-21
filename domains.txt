@@ -85,3 +85,10 @@ booking.com
 udemy.com
 fiverr.com
 roblox.com
+netflix.com
+revolut.com
+robinhood.com
+etoro.com
+onlyfans.com
+tinder.com
+openai.com
