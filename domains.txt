@@ -99,3 +99,10 @@ expedia.com
 ticketmaster.com
 stubhub.com
 metamask.io
+doordash.com
+ubereats.com
+uber.com
+lyft.com
+dropbox.com
+nordvpn.com
+bet365.com
