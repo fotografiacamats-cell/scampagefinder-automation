@@ -120,3 +120,10 @@ chewy.com
 instacart.com
 godaddy.com
 fanduel.com
+steampowered.com
+disneyplus.com
+coursera.org
+soundcloud.com
+delta.com
+cvs.com
+webull.com
