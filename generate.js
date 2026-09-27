@@ -1,5 +1,5 @@
 // generate.js - Genera informes HTML estáticos a partir de dominios
-// v2.0 - Con contenido editorial, Schema.org, AdSense y enlazado interno
+// v2.1 - Schema.org corregido (sin Review inválido), FAQPage + WebPage + BreadcrumbList
 const fs = require('fs');
 const path = require('path');
 
@@ -60,37 +60,62 @@ function getDomainAgeText(ageDays) {
     return { text: str, risk: 'low', flag: '✅ Established domain' };
 }
 
-// Genera el bloque de Schema JSON-LD
-function buildSchema(domain, score, risk, data) {
-    const created = data.domain_info?.created_at ? data.domain_info.created_at.substring(0, 10) : null;
+// Schema 1: WebPage limpio (sin Review inválido)
+function buildWebPageSchema(domain, score, risk, data) {
     return JSON.stringify({
         "@context": "https://schema.org",
         "@type": "WebPage",
         "name": `Is ${domain} safe? — Security Report`,
         "description": `Free security analysis of ${domain}: WHOIS age, DNS records, SPF, DMARC, and HTTP security headers. Technical Transparency Score: ${score}/100 (${risk.label}).`,
         "url": `https://reports.scampagefinder.com/check/${domain}`,
-        "mainEntity": {
-            "@type": "Review",
-            "itemReviewed": {
-                "@type": "WebSite",
-                "name": domain,
-                "url": `https://${domain}`
-            },
-            "reviewRating": {
-                "@type": "Rating",
-                "ratingValue": score,
-                "bestRating": 100,
-                "worstRating": 0
-            },
-            "author": { "@type": "Organization", "name": "ScamPageFinder" },
-            "reviewBody": risk.summary
+        "inLanguage": "en",
+        "isPartOf": {
+            "@type": "WebSite",
+            "name": "ScamPageFinder",
+            "url": "https://scampagefinder.com"
         },
-        "publisher": { "@type": "Organization", "name": "ScamPageFinder", "url": "https://scampagefinder.com" },
+        "publisher": {
+            "@type": "Organization",
+            "name": "ScamPageFinder",
+            "url": "https://scampagefinder.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://scampagefinder.com/logo.png"
+            }
+        },
         "dateModified": new Date().toISOString().split('T')[0]
     }, null, 2);
 }
 
-// Genera el bloque FAQ Schema
+// Schema 2: BreadcrumbList (ayuda a Google a entender la jerarquía)
+function buildBreadcrumbSchema(domain) {
+    return JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "ScamPageFinder",
+                "item": "https://scampagefinder.com"
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Security Reports",
+                "item": "https://reports.scampagefinder.com"
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": `Is ${domain} safe?`,
+                "item": `https://reports.scampagefinder.com/check/${domain}`
+            }
+        ]
+    }, null, 2);
+}
+
+// Schema 3: FAQPage (esto sí lo muestra Google en los resultados)
 function buildFAQSchema(domain, score, risk, spf, dmarc, ageDays) {
     const ageInfo = getDomainAgeText(ageDays);
     return JSON.stringify({
@@ -119,6 +144,14 @@ function buildFAQSchema(domain, score, risk, spf, dmarc, ageDays) {
                 "acceptedAnswer": {
                     "@type": "Answer",
                     "text": `SPF record: ${spf ? 'Detected' : 'Not detected'}. DMARC policy: ${dmarc ? 'Detected' : 'Not detected'}. ${!spf || !dmarc ? 'Missing email authentication records mean anyone could potentially send emails impersonating this domain.' : 'Both email authentication records are present, which is a positive signal for a legitimate domain.'}`
+                }
+            },
+            {
+                "@type": "Question",
+                "name": `What does the Technical Transparency Score mean?`,
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": `The score (0-100) reflects the strength of publicly observable security signals: domain age, WHOIS data, SPF, DMARC, and HTTP security headers. It is not a legal verdict — it measures technical posture only. A high score means more signals are properly configured, which is a positive indicator but not a guarantee of legitimacy.`
                 }
             }
         ]
@@ -168,15 +201,12 @@ function buildHTML(domain, data) {
         </div>`
     ).join('');
 
-    const schemaJson    = buildSchema(domain, score, risk, data);
-    const faqSchemaJson = buildFAQSchema(domain, score, risk, spf, dmarc, ageDays);
+    const webPageSchema     = buildWebPageSchema(domain, score, risk, data);
+    const breadcrumbSchema  = buildBreadcrumbSchema(domain);
+    const faqSchemaJson     = buildFAQSchema(domain, score, risk, spf, dmarc, ageDays);
 
     const colorMap = { emerald: '#10b981', amber: '#f59e0b', rose: '#f43f5e' };
     const scoreColor = colorMap[risk.color];
-
-    // Dominio de tld para texto editorial
-    const domainParts = domain.split('.');
-    const tld = domainParts[domainParts.length - 1].toUpperCase();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -194,7 +224,8 @@ function buildHTML(domain, data) {
 <meta property="og:image" content="https://scampagefinder.com/logo.png">
 <meta name="twitter:card" content="summary">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}" crossorigin="anonymous"></script>
-<script type="application/ld+json">${schemaJson}</script>
+<script type="application/ld+json">${webPageSchema}</script>
+<script type="application/ld+json">${breadcrumbSchema}</script>
 <script type="application/ld+json">${faqSchemaJson}</script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
