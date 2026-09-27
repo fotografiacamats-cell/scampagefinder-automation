@@ -127,3 +127,10 @@ soundcloud.com
 delta.com
 cvs.com
 webull.com
+venmo.com
+cash.app
+pinterest.com
+reddit.com
+ikea.com
+sephora.com
+carvana.com
