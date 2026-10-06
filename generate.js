@@ -1,5 +1,5 @@
-// Refresh a small batch of cached technical reports each day.
-// Automated snapshots are utility pages, not editorial reviews or safety verdicts.
+// Refresh cached technical reports. Automated snapshots are utility pages,
+// not editorial reviews or safety verdicts.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -8,6 +8,7 @@ const BATCH_SIZE = 10;
 const DELAY_MS = 350;
 const OUTPUT_DIR = 'output';
 const CURSOR_FILE = '.report-cursor';
+const MIGRATION_MARKER = '.report-migration-complete';
 const BASE_URL = 'https://reports.scampagefinder.com';
 
 const domains = fs.readFileSync('domains.txt', 'utf8')
@@ -78,22 +79,21 @@ function buildReport(domain, data) {
 
 async function main() {
   if (!domains.length) throw new Error('domains.txt contains no domains.');
+  if (new Set(domains).size !== domains.length) throw new Error('domains.txt contains duplicate domains.');
   if (domains.some((domain) => !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(domain))) {
     throw new Error('domains.txt contains an invalid domain.');
   }
 
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  const migrating = !fs.existsSync(MIGRATION_MARKER);
   const rawCursor = Number.parseInt(fs.existsSync(CURSOR_FILE) ? fs.readFileSync(CURSOR_FILE, 'utf8') : '0', 10);
-  const start = Number.isFinite(rawCursor) && rawCursor >= 0 ? rawCursor % domains.length : 0;
-  const count = Math.min(BATCH_SIZE, domains.length);
+  const start = migrating ? 0 : (Number.isFinite(rawCursor) && rawCursor >= 0 ? rawCursor % domains.length : 0);
+  const count = migrating ? domains.length : Math.min(BATCH_SIZE, domains.length);
   const batch = Array.from({ length: count }, (_, index) => domains[(start + index) % domains.length]);
 
   fs.writeFileSync(path.join(OUTPUT_DIR, '_redirects'), '/check/* /:splat 200\n');
+  // Allow crawlers to read noindex directives; do not advertise a sitemap of utility reports.
   fs.writeFileSync(path.join(OUTPUT_DIR, 'robots.txt'), 'User-agent: *\nAllow: /\n');
-  // Keep the sitemap valid but empty: cached automated reports are noindex utility pages.
-  fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n');
 
   let generated = 0;
   let errors = 0;
@@ -115,7 +115,13 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
   }
 
+  if (migrating && errors > 0) {
+    throw new Error('The initial migration was incomplete; rerun it to update every existing report before committing.');
+  }
   if (errors === batch.length) throw new Error('Every report in this batch failed; cursor was not advanced.');
+
+  // One successful all-domain migration sanitizes the current report set; later runs rotate 10/day.
+  if (migrating) fs.writeFileSync(MIGRATION_MARKER, new Date().toISOString() + '\n');
   fs.writeFileSync(CURSOR_FILE, String((start + count) % domains.length) + '\n');
   console.log('Completed: ' + generated + ' refreshed, ' + errors + ' errors; next cursor ' + ((start + count) % domains.length) + '.');
 }
