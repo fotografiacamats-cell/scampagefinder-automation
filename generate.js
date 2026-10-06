@@ -123,7 +123,7 @@ async function main() {
     for (const file of fs.readdirSync(OUTPUT_DIR)) {
       if (!file.endsWith('.html')) continue;
       const oldDomain = file.slice(0, -5).toLowerCase();
-      if (/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/i.test(oldDomain) && !activeDomains.has(oldDomain)) {
+      if (/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(oldDomain) && !activeDomains.has(oldDomain)) {
         fs.unlinkSync(path.join(OUTPUT_DIR, file));
       }
     }
