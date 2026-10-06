@@ -118,6 +118,16 @@ async function main() {
   if (migrating && errors > 0) {
     throw new Error('The initial migration was incomplete; rerun it to update every existing report before committing.');
   }
+  if (migrating) {
+    const activeDomains = new Set(domains);
+    for (const file of fs.readdirSync(OUTPUT_DIR)) {
+      if (!file.endsWith('.html')) continue;
+      const oldDomain = file.slice(0, -5).toLowerCase();
+      if (/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/i.test(oldDomain) && !activeDomains.has(oldDomain)) {
+        fs.unlinkSync(path.join(OUTPUT_DIR, file));
+      }
+    }
+  }
   if (errors === batch.length) throw new Error('Every report in this batch failed; cursor was not advanced.');
 
   // One successful all-domain migration sanitizes the current report set; later runs rotate 10/day.
